@@ -1,0 +1,6 @@
+Smart Drone for Picking Up and Transporting Lightweight Objects
+This project focuses on developing a smart drone capable of picking up, transporting, and releasing lightweight objects. The drone will be equipped with a special gripping mechanism that allows it to grab small items, carry them to a desired location, and release them safely.
+
+The main goal of this project is to create a practical and efficient solution for moving lightweight objects without human assistance. The drone could be used to deliver small packages, collect objects, assist with simple tasks, and transport items in places that are difficult to reach.
+
+This project combines drone technology, mechanical design, and automation to demonstrate how unmanned aerial vehicles can perform useful everyday tasks. In the future, the system could be improved with sensors, object detection, and autonomous navigation to make the drone smarter and more reliable.
