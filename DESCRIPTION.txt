@@ -73,4 +73,14 @@ Control and camera are confirmed working on real hardware. The remaining
 protocols compile but have not been flown. Video recording, telemetry decoding
 for this drone family, and the iOS build are still outstanding.
 
+PROJECT REPOSITORIES
+
+  Hyperion                        system overview and protocol specification
+  Hyperion_drone_controller_app   this repository, the ground station
+  Hyperion_drone_firmware         flight controller and gripper firmware
+  Hyperion_drone_hardware         airframe, gripper, electronics
+
+  https://github.com/AmanTugolbekov/Hyperion
+
 See README.md for the full documentation and NEXT_STEPS.md for the work plan.
+The wire protocol is specified in the umbrella repository, under docs/.

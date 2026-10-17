@@ -1,101 +1,103 @@
-# План работ
+# Work plan
 
-Состояние на 2026-10-17: **управление (UDP 7099) и камера (RTSP 7070) проверены
-на живом дроне E88 и работают.**
+As of 2026-10-17: **control (UDP 7099) and the camera (RTSP 7070) are verified
+on a real E88 and working.**
 
-Разделено по тому, нужен ли для работы дрон под рукой.
+Split by whether the drone has to be in the room.
 
 ---
 
-## A. Проверить при первой же возможности (нужен дрон)
+## A. Verify at the first opportunity (drone needed)
 
-Это уже написанный код, который ни разу не выполнялся на железе.
+Code that is written but has never run against hardware.
 
-| # | Что | Как проверить | Если не работает |
+| # | What | How to check | Where it lives |
 |---|---|---|---|
-| A1 | **Фото** | Кнопка «Фото» → смотреть альбом «Ala-Too Drone» в галерее | Путь `RtspViewState.screenshot()` → `MediaService.savePhotoBytes`. Снимок берётся у плеера, а не из протокола |
-| A2 | **Направление поворота картинки** | Навести дрон на что-то с явным верхом | Если вверх ногами — в [rtsp_view.dart](lib/widgets/rtsp_view.dart) заменить `quarterTurns: 1` на `3` |
-| A3 | **Взлёт / посадка** | Кнопка «Взлёт», потом «Посадка» | Биты команд различаются у вариантов E88, см. `E88Protocol.takeOff()` |
-| A4 | **Флип, headless, калибровка** | По одной кнопке за раз | Там же, биты `0x08` / `0x10` / `0x80` |
-| A5 | **Аварийный стоп** | **Только на земле или на высоте 20–30 см** — моторы глохнут мгновенно, дрон падает | — |
-| A6 | **Триммеры** | Если дрон сносит — подкрутить и проверить, что снос уходит | — |
-| A7 | **Режимы скорости** | 30 / 60 / 100 % | — |
-| A8 | **Управление наклоном** | Включить и наклонять телефон | — |
-| A9 | **Привязка к Wi-Fi** | Диагностика → в журнале строка `Sockets pinned to Wi-Fi` | Если `Could not pin` — MIUI режет `bindProcessToNetwork`, нужно отключать мобильные данные вручную |
+| A1 | **Stills** | Press Photo, look in the "Ala-Too Drone" album | `RtspViewState.screenshot()` → `MediaService.savePhotoBytes`. The shutter asks the player, not the protocol |
+| A2 | **Rotation direction** | Point the drone at something with an obvious top | If upside down, change `quarterTurns: 1` to `3` in [rtsp_view.dart](lib/widgets/rtsp_view.dart) |
+| A3 | **Take-off / landing** | Take off, then land | Command bits differ per E88 variant, see `E88Protocol.takeOff()` |
+| A4 | **Flip, headless, calibration** | One button at a time | Same place: bits `0x08` / `0x10` / `0x80` |
+| A5 | **Emergency stop** | **On the ground, or at 20–30 cm only** — the motors cut instantly and the drone drops | — |
+| A6 | **Trim** | If the drone drifts, trim it out and confirm the drift stops | — |
+| A7 | **Rate switch** | 30 / 60 / 100 % | — |
+| A8 | **Tilt control** | Enable it and tilt the phone | — |
+| A9 | **Wi-Fi pinning** | Diagnostics → look for `Sockets pinned to Wi-Fi` | If it says `Could not pin`, MIUI is blocking `bindProcessToNetwork` and mobile data must be turned off by hand |
 
 ---
 
-## B. Известные дефекты (нужен дрон для проверки починки)
+## B. Known defects (drone needed to confirm the fix)
 
-### B1. Запись видео не работает при RTSP — приоритет 1
+### B1. Video recording is broken over RTSP — priority 1
 
-Текущий [MjpegAviWriter](lib/services/mjpeg_avi_writer.dart) собирает AVI из
-потока готовых JPEG. При RTSP кадры живут внутри FFmpeg и в Dart не попадают,
-поэтому писать нечего.
+[MjpegAviWriter](lib/services/mjpeg_avi_writer.dart) assembles an AVI from a
+stream of complete JPEG frames. Over RTSP the frames live inside FFmpeg and
+never reach Dart, so there is nothing to write.
 
-**Решение:** у libmpv есть собственная запись потока — свойство
-`stream-record`. Пишется ровно то, что приходит с дрона, без перекодирования:
+**Fix:** libmpv records the stream itself through the `stream-record` property.
+It writes exactly what arrives, with no re-encoding:
 
 ```dart
-// в RtspView
-native.setProperty('stream-record', '/path/to/clip.mkv');  // старт
-native.setProperty('stream-record', '');                   // стоп
+// in RtspView
+native.setProperty('stream-record', '/path/to/clip.mkv');  // start
+native.setProperty('stream-record', '');                   // stop
 ```
 
-Заодно это снимет старую проблему с памятью: запись шла в оперативку целиком.
+This also removes an older problem: recording accumulated every frame in RAM
+and only wrote the file on stop.
 
-### B2. Сканер портов в Диагностике даёт ложные результаты — приоритет 2
+### B2. The diagnostics port scanner lies — priority 2
 
-[DroneScanner](lib/protocol/drone_scanner.dart) считает порт закрытым по
-таймауту. Этот дрон **молча глотает SYN** на закрытые порты, поэтому таймаут
-означает «неизвестно», а не «закрыто». Из-за этого сканер показывал 7070
-закрытым, когда там работал RTSP.
+[DroneScanner](lib/protocol/drone_scanner.dart) calls a port closed when the
+connection times out. This drone **silently drops SYN packets** to closed
+ports, so a timeout means "no answer", not "closed". The scanner reported 7070
+as closed while it was serving RTSP.
 
-**Решение:** различать три исхода — «ответил», «отказ (RST)», «нет ответа», и
-не называть третий закрытым. Таймаут поднять до 2–3 с.
+**Fix:** distinguish three outcomes — answered, refused (RST), and no response
+— and stop calling the third one closed. Raise the timeout to 2–3 s.
 
-### B3. Телеметрия пустая — приоритет 3
+### B3. Telemetry is empty — priority 3
 
-Батарея и высота не показываются: формат ответов дрона не разобран. В
-`E88Protocol._onSocketEvent` телеметрия заполняется заглушкой.
+Battery and altitude are not shown: the reply format has not been decoded.
+`E88Protocol._onSocketEvent` fills telemetry with a placeholder.
 
-**Решение:** дрон шлёт 11-байтовые пакеты в ответ на heartbeat. Разбор есть в
-`SocketClient` внутри RC UFO — достать тем же способом, что и протокол
-(см. раздел D). Реальный индикатор заряда в полёте важен.
+**Fix:** the drone answers heartbeats with 11-byte packets. The parser is in
+`SocketClient` inside the RC UFO app — extract it the same way the protocol was
+extracted (see section D). A real charge indicator matters in flight.
 
 ---
 
-## C. Новые возможности (нужен дрон)
+## C. New features (drone needed)
 
-| # | Что | На чём основано |
+| # | What | Based on |
 |---|---|---|
-| C1 | **Галерея с SD-карты дрона** | В RC UFO найдены FTP (`ftp`/`ftp`) и `http://192.168.1.1/PHOTO/O/`, превью — `/PHOTO/T/`. Можно листать и скачивать снятое |
-| C2 | **Переключение камер** | Команды `06 01` / `06 02` — если у дрона есть нижняя камера |
-| C3 | **Автопереподключение видео** | Если поток обрывается в полёте — дёргать `RtspViewState.restart()` вместо чёрного экрана |
-| C4 | **Тюнинг задержки видео** | Сейчас `profile=low-latency`, `rtsp-transport=udp`. Замерить реальный лаг и подобрать |
-| C5 | **Запись телеметрии полёта** | Лог высоты/заряда/команд в файл — полезно для учебных целей |
+| C1 | **Browse the drone's SD card** | RC UFO revealed FTP (`ftp`/`ftp`) and `http://192.168.1.1/PHOTO/O/`, thumbnails at `/PHOTO/T/`. Enough to list and download what was shot |
+| C2 | **Camera switching** | Commands `06 01` / `06 02`, if the drone has a downward camera |
+| C3 | **Video auto-reconnect** | Call `RtspViewState.restart()` when the stream drops mid-flight, instead of showing black |
+| C4 | **Latency tuning** | Currently `profile=low-latency`, `rtsp-transport=udp`. Measure the real lag and tune |
+| C5 | **Flight telemetry logging** | Altitude, charge and commands to a file — useful for coursework |
 
 ---
 
-## D. Можно делать без дрона
+## D. Can be done without the drone
 
-| # | Что |
+| # | What |
 |---|---|
-| D1 | **Разбор телеметрии из APK** — `apkanalyzer dex code --class com.cooingdv.rcufo.socket.SocketClient`, искать парсинг ответов. Готовит B3 |
-| D2 | **iOS: Info.plist** — нет описаний разрешений на геолокацию и галерею, без них приложение упадёт при первом запросе и его не примет App Store |
-| D3 | **Релизная подпись** — сейчас release подписан debug-ключом, раздавать такую сборку нельзя |
-| D4 | **Иконка и имя приложения** — сейчас стандартная иконка Flutter |
-| D5 | **Убрать мёртвый код** — `tcp_mjpeg_receiver.dart` и `video_receiver.dart` больше не используются протоколом E88 |
-| D6 | **Тесты** — на `JpegFramer`, `MjpegAviWriter`, разбор кадров протокола. Сейчас тестов нет вообще |
+| D1 | **Decode telemetry from the APK** — `apkanalyzer dex code --class com.cooingdv.rcufo.socket.SocketClient`, find where replies are parsed. Prepares B3 |
+| D2 | **iOS `Info.plist`** — no permission strings for location or the photo library; the app will crash on the first request and the App Store will reject it |
+| D3 | **Release signing** — release builds currently use the debug key and cannot be distributed |
+| D4 | **Icon and app name** — still the stock Flutter icon |
+| D5 | **Remove dead code** — `tcp_mjpeg_receiver.dart` and `video_receiver.dart` are no longer used by the E88 protocol |
+| D6 | **Tests** — for `JpegFramer`, `MjpegAviWriter`, and protocol frame building. There are none at all |
 
 ---
 
-## Предлагаемый порядок
+## Suggested order
 
-1. **D1** (без дрона) — достать формат телеметрии, чтобы при дроне сразу проверить
-2. **B1** — запись видео, самый заметный пробел
-3. **A1–A9** — один заход, прогнать весь чеклист
-4. **B3** — телеметрия, если D1 дал формат
-5. **B2**, затем **C1**
+1. **D1** (no drone) — get the telemetry format ready so it can be tested the
+   moment a drone is available
+2. **B1** — video recording, the most visible gap
+3. **A1–A9** — one session, the whole checklist
+4. **B3** — telemetry, if D1 produced the format
+5. **B2**, then **C1**
 
-Пункты D2–D4 обязательны перед тем, как давать приложение кому-то кроме себя.
+D2–D4 are prerequisites before handing the app to anyone else.

@@ -1,91 +1,94 @@
-# Hyperion — контроллер дрона
+# Hyperion — Drone Controller App
 
-Мобильное приложение для управления Wi-Fi квадрокоптером с телефона:
-видео с камеры, два джойстика, телеметрия. Замена стоковому приложению
-**RC UFO** с фирменным оформлением Международного университета Ала-Тоо.
+A mobile ground station for Wi-Fi quadcopters: live FPV video, dual sticks and
+telemetry on a phone. Built as a replacement for the stock **RC UFO** app, in
+the colours of Ala-Too International University.
 
-Flutter · Android (iOS — каркас готов) · три языка
+Flutter · Android (iOS scaffolded) · three languages
 
 ---
 
-## Место в проекте
+## Where this fits
 
-Hyperion — умный дрон, который захватывает, переносит и отпускает лёгкие
-предметы, чтобы перемещать небольшие грузы без участия человека. Этому
-аппарату нужен интерфейс пилота — и этот репозиторий им и является.
+Part of the [**Hyperion**](https://github.com/AmanTugolbekov/Hyperion) project:
+a smart drone that picks up, carries and releases lightweight objects.
 
-Параллельно приложение работает как самостоятельная замена стоковым
-приложениям дешёвых Wi-Fi дронов, на которых оно сейчас и разрабатывается.
-Описание проекта целиком — в [DESCRIPTION.txt](DESCRIPTION.txt), модели рамы
-лежат в `x101_frame*`.
+| Repository | Contents |
+|---|---|
+| [Hyperion](https://github.com/AmanTugolbekov/Hyperion) | System overview and the radio protocol specification |
+| **This one** | The ground station — the part the pilot holds |
+| [Hyperion_drone_firmware](https://github.com/AmanTugolbekov/Hyperion_drone_firmware) | Flight controller and gripper firmware |
+| [Hyperion_drone_hardware](https://github.com/AmanTugolbekov/Hyperion_drone_hardware) | Airframe, gripper, electronics |
 
-## Что это
+The app is developed against a commercial E88 quadcopter while the Hyperion
+airframe is being built. That is deliberate: a real aircraft drops packets,
+stays silent, and streams its camera sideways — a simulator does none of those
+things, and an app that only works against a simulator does not work.
 
-Дешёвые Wi-Fi дроны продаются с приложениями, которые работают, но выглядят
-плохо, забиты рекламой и ничего не объясняют о том, что происходит с аппаратом.
-Hyperion делает то же самое, но внятно: честный индикатор связи, понятный
-журнал обмена с дроном и интерфейс, который не стыдно показать.
+## What it does
 
-Протокол связи **не угадан по форумам, а извлечён из стокового приложения** и
-проверен на живом дроне — подробности ниже.
+Cheap Wi-Fi drones ship with apps that function but are unpleasant: crowded
+with ads, and silent about what the aircraft is actually doing. This one aims
+to be legible — an honest link indicator, a readable log of the exchange with
+the drone, and an interface worth showing.
 
-## Возможности
+**Flight**
 
-**Полёт**
+- Two sticks — throttle/yaw and roll/pitch — with a switchable layout for
+  Mode 1 and Mode 2 pilots
+- Take-off, landing, emergency stop, 360° flip, headless mode
+- Per-axis trim and gyro calibration
+- Three rates: 30 / 60 / 100 %
+- Tilt flying through the phone's accelerometer
 
-- Два джойстика: газ/рыскание и крен/тангаж, раскладка переключается
-  (Mode 1 / Mode 2)
-- Взлёт, посадка, аварийная остановка, флип 360°, headless-режим
-- Триммеры по трём осям и калибровка гироскопа
-- Три режима скорости: 30 / 60 / 100 %
-- Управление наклоном телефона через акселерометр
+The throttle stick behaves differently per aircraft, and the protocol decides
+which: where the drone holds its own altitude the stick springs back to centre,
+and where throttle is raw motor power it stays where the pilot left it and
+starts at the bottom. Otherwise a centred stick would mean half power the
+instant the motors arm.
 
-Поведение стика газа определяется протоколом: у дронов с удержанием высоты он
-пружинит в центр, у остальных — остаётся там, где его оставили, и стартует
-внизу. Иначе центрированный стик означал бы половину мощности в момент
-запуска моторов.
+**Camera**
 
-**Камера**
+- Full-screen live view
+- Stills to the phone's gallery, album "Ala-Too Drone"
+- Automatic frame rotation — the drone reports its stream as portrait because
+  the camera is mounted sideways
 
-- Видео с дрона на весь экран
-- Фото в галерею телефона, альбом «Ala-Too Drone»
-- Автоматический доворот кадра: дрон отдаёт поток помеченным как вертикальный,
-  потому что камера установлена боком
+**Telemetry and diagnostics**
 
-**Телеметрия и диагностика**
+- Battery, altitude, link state
+- Diagnostics screen: manual address and ports, live exchange log
+- A warning when traffic is escaping to mobile data (see below)
 
-- Заряд, высота, состояние связи
-- Экран диагностики: ручной ввод адреса и портов, живой журнал обмена
-- Предупреждение, если трафик уходит в мобильный интернет (см. ниже)
+**Other**
 
-**Прочее**
+- Russian, English, Kyrgyz
+- Screen stays awake in flight, forced landscape
+- Leaving the cockpit lands the drone first, then drops the link
 
-- Русский, английский, кыргызский
-- Экран не гаснет в полёте, принудительный ландшафт
-- При выходе из кабины дрон сначала садится, и только потом рвётся связь
+## Supported aircraft
 
-## Поддерживаемые дроны
+The protocol layer is pluggable — [`lib/protocol/`](lib/protocol/). Adding a
+family means one class and one line in the registry.
 
-Слой протокола плагинный — [`lib/protocol/`](lib/protocol/). Добавить новое
-семейство значит написать один класс и дописать строку в реестр.
-
-| Протокол | Транспорт | Статус |
+| Protocol | Transport | Status |
 |---|---|---|
-| **E88 / E58 / LSRC** | UDP 7099, видео RTSP 7070 | **Проверен на железе** |
-| Generic Wi-Fi UAV | UDP 8080/8888 | Не проверен |
-| DJI Tello | UDP 8889 | Не проверен |
-| Симулятор | — | Для разработки без дрона |
+| **E88 / E58 / LSRC** | UDP 7099, RTSP video on 7070 | **Verified on hardware** |
+| Generic Wi-Fi UAV | UDP 8080/8888 | Untested |
+| DJI Tello | UDP 8889 | Untested |
+| Simulator | — | For development without a drone |
 
-Протокол выбирается по имени Wi-Fi сети дрона либо вручную в настройках.
+The protocol is chosen from the drone's Wi-Fi network name, or by hand in
+settings.
 
-## Как был определён протокол E88
+## How the E88 protocol was found
 
-Сообщество описывает этот дрон противоречиво: порт управления называют то
-7099, то 8090, то 8800, видео — то RTSP, то самодельным UDP-потоком. Авторы
-разборов честно пишут, что на железе не проверяли. Две попытки собрать
-протокол по этим описаниям не заработали.
+Community write-ups for this drone family contradict each other — the control
+port is given as 7099, 8090 or 8800, and the video as either RTSP or a bespoke
+UDP stream. Their authors state plainly that they never verified against
+hardware. Two implementations built from those descriptions did not work.
 
-Решилось иначе — чтением стокового приложения:
+Reading the manufacturer's own app settled it:
 
 ```bash
 adb shell pm path com.cooingdv.rcufo
@@ -93,93 +96,93 @@ adb pull <base.apk>
 apkanalyzer dex code --class com.cooingdv.rcufo.socket.Config base.apk
 ```
 
-Константы лежали открытым текстом:
+The constants were in plain sight:
 
 ```
 SERVER_IP             = "192.168.1.1"
 PREVIEW_ADDRESS       = "rtsp://192.168.1.1:7070/webcam"
-SEND_COMMAND_INTERVAL = 40        // 25 Гц
+SEND_COMMAND_INTERVAL = 40        // 25 Hz
 UdpComm.getInstance("192.168.1.1", 7099)
 ```
 
-Проверено по живым сокетам: пока работало стоковое приложение,
-`/proc/net/tcp` показывал установленное соединение с `192.168.1.1:7070`, а
-видео приходило по RTP на UDP 13044/13045.
+Confirmed against live traffic: while the stock app was connected,
+`/proc/net/tcp` showed an established session to `192.168.1.1:7070`, with video
+arriving over RTP on a pair of UDP ports.
 
-**Итог:** управление — UDP 7099, кадр каждые 40 мс; камера — RTSP, MJPEG,
-240×320, проигрывается через FFmpeg.
+**Result:** control over UDP 7099, one frame every 40 ms; camera over RTSP,
+MJPEG, 240×320, decoded with FFmpeg. The full specification lives in
+[the umbrella repository](https://github.com/AmanTugolbekov/Hyperion/blob/main/docs/PROTOCOL.md).
 
-## Две неочевидные вещи, без которых ничего не работает
+## Two things without which nothing works
 
-**Android уводит трафик в мобильный интернет.** Точка доступа дрона не даёт
-выхода в сеть, поэтому система считает её нерабочей и молча отправляет пакеты
-через LTE — дрон не получает ни одной команды. Приложение вызывает
-`ConnectivityManager.bindProcessToNetwork` через
-[MethodChannel](android/app/src/main/kotlin/kg/edu/alatoo/alatoo_drone/MainActivity.kt),
-причём в запросе намеренно не указана способность `NET_CAPABILITY_INTERNET` —
-с ней запрос не совпал бы никогда.
+**Android routes the traffic away.** The drone's access point offers no
+internet, so the system treats it as dead and quietly sends every packet over
+mobile data — the drone receives nothing, and no error is raised. The app pins
+its sockets with `ConnectivityManager.bindProcessToNetwork` through a
+[MethodChannel](android/app/src/main/kotlin/kg/edu/alatoo/alatoo_drone/MainActivity.kt).
+The network request deliberately omits `NET_CAPABILITY_INTERNET` — with it, the
+request would never match.
 
-**Дрон игнорирует Wi-Fi, пока его не переключить.** Некоторые платы семейства
-загружаются привязанными к физическому пульту и отбрасывают команды до тех
-пор, пока не получат пакет перехода в режим Wi-Fi.
+**Some boards ignore Wi-Fi until switched.** They boot bound to the physical
+remote and discard commands until they receive a mode-switch packet.
 
-## Архитектура
+## Architecture
 
 ```
 lib/
-├── protocol/     диалекты дронов за общим интерфейсом DroneProtocol
-├── services/     состояние связи, настройки, медиа, привязка к Wi-Fi
-├── screens/      сплэш, подключение, кабина, настройки, диагностика
-├── widgets/      джойстик, HUD, RTSP-плеер
-├── theme/        палитра и шрифты Ала-Тоо
-└── l10n/         три языка
+├── protocol/     drone dialects behind one DroneProtocol interface
+├── services/     link state, settings, media, Wi-Fi pinning
+├── screens/      splash, connect, cockpit, settings, diagnostics
+├── widgets/      joystick, HUD, RTSP player
+├── theme/        Ala-Too palette and typography
+└── l10n/         three languages
 ```
 
-Управляющий поток идёт непрерывно с частотой, которую задаёт протокол: дроны
-этого класса перестают слушаться, если поток прерывается. Одноразовые команды
-вроде взлёта повторяются несколько кадров подряд, потому что UDP-пакеты
-теряются постоянно.
+The control stream runs continuously at the rate the protocol specifies —
+drones in this class stop obeying if it pauses. One-shot commands such as
+take-off are repeated across several frames, because UDP packets are lost
+constantly.
 
-## Сборка
+## Build
 
-Требуется Flutter 3.19+ и JDK 17.
+Flutter 3.19+ and JDK 17.
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-Сборка APK:
+Release APK:
 
 ```bash
 flutter build apk --release
 ```
 
-Разрешения Android уже прописаны. Имя Wi-Fi сети на Android доступно только с
-разрешением на геолокацию — поэтому приложение просит его при запуске.
+Android permissions are already declared. The Wi-Fi network name is only
+readable with location permission, which is why the app asks for it on launch.
 
-## Оформление
+## Design
 
-Палитра снята с [alatoo.edu.kg](https://alatoo.edu.kg): navy `#001F5B`,
-navy-2 `#19316A`, crimson `#C70017`, ink `#1F1F1F`, mist `#F7F8FA`.
-Шрифты: Poppins для заголовков, Inter для текста. Экран полёта тёмный, чтобы
-видео читалось; аварийный стоп — единственная красная кнопка в кабине.
+Palette taken from [alatoo.edu.kg](https://alatoo.edu.kg): navy `#001F5B`,
+navy-2 `#19316A`, crimson `#C70017`, ink `#1F1F1F`, mist `#F7F8FA`. Poppins for
+headings, Inter for body text. The cockpit is dark so the video reads clearly;
+emergency stop is the only red control on it.
 
-## Чего пока нет
+## Not there yet
 
-- **Запись видео при RTSP** — писатель AVI рассчитан на поток JPEG, которого
-  при RTSP нет. Фото работает, запись нет
-- **Телеметрия заряда и высоты у E88** — формат ответов дрона не разобран
-- **Сканер портов в диагностике ненадёжен** — дрон молча отбрасывает запросы к
-  закрытым портам, из-за чего таймаут неотличим от отказа
-- **iOS не настроен** — нет описаний разрешений в `Info.plist`
-- **Release подписан debug-ключом** — раздавать такую сборку нельзя
+- **Video recording over RTSP** — the AVI writer expects a stream of JPEG
+  frames, which RTSP does not provide. Stills work, recording does not
+- **Battery and altitude telemetry on E88** — the reply format is not decoded
+- **The diagnostics port scanner is unreliable** — the drone silently drops
+  requests to closed ports, making a timeout indistinguishable from a refusal
+- **iOS is unconfigured** — no permission strings in `Info.plist`
+- **Release builds are signed with the debug key** — not distributable
 
-Полный план работ — в [NEXT_STEPS.md](NEXT_STEPS.md).
+The full work plan is in [NEXT_STEPS.md](NEXT_STEPS.md).
 
-## Статус
+## Status
 
-Управление и камера проверены на живом дроне E88. Остальные протоколы написаны,
-но на железе не проверялись.
+Control and camera are verified on a real E88. The other protocols compile but
+have never been flown.
 
-Учебный проект Международного университета Ала-Тоо.
+Coursework at Ala-Too International University.
