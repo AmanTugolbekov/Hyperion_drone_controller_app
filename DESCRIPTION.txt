@@ -1,6 +1,76 @@
-Smart Drone for Picking Up and Transporting Lightweight Objects
-This project focuses on developing a smart drone capable of picking up, transporting, and releasing lightweight objects. The drone will be equipped with a special gripping mechanism that allows it to grab small items, carry them to a desired location, and release them safely.
+Hyperion — Drone Controller App
+===============================
 
-The main goal of this project is to create a practical and efficient solution for moving lightweight objects without human assistance. The drone could be used to deliver small packages, collect objects, assist with simple tasks, and transport items in places that are difficult to reach.
+A mobile ground station for the Hyperion smart drone, and for Wi-Fi
+quadcopters in general. Written in Flutter, running on Android, and built at
+Ala-Too International University.
 
-This project combines drone technology, mechanical design, and automation to demonstrate how unmanned aerial vehicles can perform useful everyday tasks. In the future, the system could be improved with sensors, object detection, and autonomous navigation to make the drone smarter and more reliable.
+
+THE WIDER PROJECT
+
+Hyperion is a smart drone that picks up, carries and releases lightweight
+objects using a gripping mechanism, so that small items can be moved without a
+person present — deliveries, collection tasks, and places that are awkward to
+reach.
+
+That aircraft needs a pilot interface. This repository is that interface: the
+part the operator actually holds. It also works as a standalone replacement for
+the stock apps shipped with cheap Wi-Fi drones, which is how it is being
+developed and tested today.
+
+
+WHAT THE CONTROLLER DOES
+
+Flight control
+  Two on-screen sticks for throttle, yaw, roll and pitch, with a switchable
+  layout for Mode 1 and Mode 2 pilots. Take-off, landing, emergency stop,
+  360-degree flip and headless mode. Per-axis trim to cancel drift, gyro
+  calibration, and three rate settings at 30, 60 and 100 percent. The phone's
+  accelerometer can replace the right stick for tilt flying.
+
+Camera
+  The drone's live view fills the screen, with stills saved to the phone's
+  gallery. The feed is rotated automatically: the camera is mounted sideways,
+  so the drone reports its stream as a portrait image.
+
+Telemetry and diagnostics
+  Battery, altitude and link state, plus a diagnostics screen that exposes the
+  raw exchange with the aircraft and allows the address and ports to be set by
+  hand. When something does not work, the app shows why rather than failing
+  silently.
+
+Languages
+  Russian, English and Kyrgyz.
+
+
+HOW IT TALKS TO THE AIRCRAFT
+
+Each drone family is a plugin behind one interface, so supporting a new
+aircraft means writing a single class. The E88 family is implemented and
+verified against real hardware: control runs over UDP port 7099 at twenty-five
+frames per second, and the camera is an RTSP MJPEG stream on port 7070 that is
+decoded with FFmpeg.
+
+That protocol was not guessed. Published reverse-engineering notes for this
+drone family disagree with each other about both the control port and the video
+transport, and their authors state they never verified against hardware — two
+attempts built from those notes did not work. The answer came from reading the
+stock application's own code, and was then confirmed against the live sockets
+the stock app opens while flying.
+
+Two platform details matter more than they appear to. Android treats the
+drone's access point as a dead network, because it offers no internet, and
+quietly routes every packet over mobile data instead; the app pins its sockets
+to Wi-Fi to prevent that. And some boards in this family boot bound to their
+physical remote and discard Wi-Fi commands until explicitly switched over.
+Either one, left unhandled, looks exactly like a drone that is simply ignoring
+the pilot.
+
+
+STATUS
+
+Control and camera are confirmed working on real hardware. The remaining
+protocols compile but have not been flown. Video recording, telemetry decoding
+for this drone family, and the iOS build are still outstanding.
+
+See README.md for the full documentation and NEXT_STEPS.md for the work plan.
