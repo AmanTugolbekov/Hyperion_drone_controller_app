@@ -85,10 +85,14 @@ class S {
     'land': ['Посадка', 'Land', 'Конуу'],
     'stop': ['СТОП', 'STOP', 'ТОКТО'],
     'emergency': ['Аварийная остановка', 'Emergency stop', 'Авариялык токтотуу'],
-    'headless': ['Headless', 'Headless', 'Headless'],
+    // "Headless" is the term the RC community uses in English, but it means
+    // nothing to a reader of the other two, so each gets its own word.
+    'headless': ['Безголовый', 'Headless', 'Башсыз'],
     'speed': ['Скорость', 'Speed', 'Ылдамдык'],
     'altitude_hold': ['Удержание высоты', 'Altitude hold', 'Бийиктикти кармоо'],
-    'gyro_mode': ['Управление наклоном', 'Tilt control', 'Эңкейтип башкаруу'],
+    // Short enough for a button caption: the longer wording was truncated
+    // to "Управлени…", which told the pilot nothing.
+    'gyro_mode': ['Наклон', 'Tilt', 'Эңкейтуу'],
     'calibrate': ['Калибровка гироскопа', 'Gyro calibration', 'Гироскопту тууралоо'],
     'calibrated': ['Гироскоп откалиброван', 'Gyro calibrated', 'Гироскоп тууралды'],
     'trim': ['Триммер', 'Trim', 'Триммер'],

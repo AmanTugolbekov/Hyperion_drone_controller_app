@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
@@ -80,9 +79,24 @@ class E88Protocol implements DroneProtocol {
   @override
   String get displayName => 'Eachine E88 / E58 / LSRC';
 
+  /// `wifi-ufo` is first because that is what the reference E88 actually
+  /// advertises (`WIFI-UFO-8c4225`). The generic dialect also claims `ufo`,
+  /// and this protocol is registered ahead of it so the more specific match
+  /// wins — otherwise an E88 is driven with the wrong frame format and simply
+  /// ignores the pilot.
   @override
-  List<String> get ssidHints =>
-      const ['e88', 'e58', 'lsrc', 'hfun', 'jy', 'wifi-8k', 'wifi_8k', 'gd'];
+  List<String> get ssidHints => const [
+        'wifi-ufo',
+        'ufo',
+        'e88',
+        'e58',
+        'lsrc',
+        'hfun',
+        'jy',
+        'wifi-8k',
+        'wifi_8k',
+        'gd',
+      ];
 
   @override
   DroneEndpoint get defaultEndpoint => const DroneEndpoint(
