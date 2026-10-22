@@ -50,7 +50,7 @@ instant the motors arm.
 **Camera**
 
 - Full-screen live view
-- Stills to the phone's gallery, album "Ala-Too Drone"
+- Stills and video recording to the phone's gallery, album "Ala-Too Drone"
 - Automatic frame rotation — the drone reports its stream as portrait because
   the camera is mounted sideways
 
@@ -170,9 +170,11 @@ emergency stop is the only red control on it.
 
 ## Not there yet
 
-- **Video recording over RTSP** — the AVI writer expects a stream of JPEG
-  frames, which RTSP does not provide. Stills work, recording does not
-- **Battery and altitude telemetry on E88** — the reply format is not decoded
+- **Battery and altitude on E88** — the aircraft has no telemetry to give. It
+  answers with a constant 5-byte packet carrying only its device id, so no
+  client can show a charge level on this hardware
+- **Clips may not play in the stock gallery** — Android's scanner cannot probe
+  MJPEG in AVI, though the files themselves are valid
 - **The diagnostics port scanner is unreliable** — the drone silently drops
   requests to closed ports, making a timeout indistinguishable from a refusal
 - **iOS is unconfigured** — no permission strings in `Info.plist`
@@ -182,7 +184,8 @@ The full work plan is in [NEXT_STEPS.md](NEXT_STEPS.md).
 
 ## Status
 
-Control and camera are verified on a real E88. The other protocols compile but
-have never been flown.
+Control, camera, stills and recording are verified on a real E88. Take-off and
+the other flight commands are written but have not been flown. The other
+protocols compile and have never been tested against hardware.
 
 Coursework at Ala-Too International University.

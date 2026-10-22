@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
 import 'drone_protocol.dart';
 import 'jpeg_framer.dart';
 
@@ -61,6 +63,9 @@ class E88Protocol implements DroneProtocol {
 
   E88Variant _variant = E88Variant.legacy7099;
   bool _sawReply = false;
+
+  /// Last status packet seen, so repeats are not logged.
+  String? _lastTelemetryHex;
   bool _motorsUnlocked = false;
 
   int _pendingFlags1 = 0;
@@ -223,6 +228,16 @@ class E88Protocol implements DroneProtocol {
     }
 
     if (data.isEmpty) return;
+
+    // These boards repeat the same status packet several times a second, so
+    // only a change is worth recording. Logging every one buries the rest of
+    // the diagnostics.
+    final hex = data.map((b) => b.toRadixString(16).padLeft(2, '0')).join(' ');
+    if (hex != _lastTelemetryHex) {
+      _lastTelemetryHex = hex;
+      _log.add('RX ${data.length}B: $hex');
+      debugPrint('[tlm] ${data.length}B $hex');
+    }
 
     if (!_sawReply) {
       _sawReply = true;

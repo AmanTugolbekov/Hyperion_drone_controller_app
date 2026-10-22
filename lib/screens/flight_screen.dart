@@ -105,19 +105,43 @@ class _FlightScreenState extends State<FlightScreen> {
   Future<void> _toggleRecording() async {
     _buzz();
     final media = context.read<MediaService>();
+    final drone = context.read<DroneService>();
     final messenger = ScaffoldMessenger.of(context);
     final s = S.of(context);
+    final overRtsp = drone.rtspUrl != null;
 
     if (media.isRecording) {
       _recTicker?.cancel();
+      _recTicker = null;
+
       final file = await media.stopRecording();
+
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(
         content: Text(file == null ? s.t('no_video') : s.t('video_saved')),
         duration: const Duration(seconds: 2),
       ));
     } else {
-      media.startRecording();
+      if (overRtsp) {
+        // The decoded frames never reach the protocol layer, so the clip is
+        // built from what the player can hand back.
+        final view = _rtspKey.currentState;
+        if (view == null || view.videoWidth == null) {
+          if (!mounted) return;
+          messenger.showSnackBar(SnackBar(
+            content: Text(s.t('no_video')),
+            duration: const Duration(seconds: 2),
+          ));
+          return;
+        }
+        media.startRecording(
+          width: view.videoWidth!,
+          height: view.videoHeight ?? view.videoWidth!,
+          frameSource: view.screenshot,
+        );
+      } else {
+        media.startRecording();
+      }
       _recTicker = Timer.periodic(
           const Duration(seconds: 1), (_) => setState(() {}));
     }

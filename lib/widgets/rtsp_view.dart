@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
@@ -33,6 +32,9 @@ class RtspViewState extends State<RtspView> {
       // A large buffer would add seconds of lag to a live feed.
       bufferSize: 512 * 1024,
       title: 'Ala-Too Drone',
+      // Surfaces libmpv's own complaints; without this a refused recording
+      // fails silently inside the player.
+      logLevel: MPVLogLevel.warn,
     ),
   );
   late final VideoController _controller = VideoController(_player);
@@ -84,6 +86,7 @@ class RtspViewState extends State<RtspView> {
       debugPrint('[rtsp] video width=$_width height=$h');
     });
     _player.stream.error.listen((e) => debugPrint('[rtsp] error: $e'));
+    _player.stream.log.listen((l) => debugPrint('[mpv] ${l.prefix}: ${l.text}'));
     await _player.open(Media(widget.url), play: true);
   }
 
@@ -94,6 +97,10 @@ class RtspViewState extends State<RtspView> {
       _player.open(Media(widget.url), play: true);
     }
   }
+
+  /// The decoded frame size, once the stream has reported it.
+  int? get videoWidth => _width;
+  int? get videoHeight => _height;
 
   /// Grabs the frame currently on screen, for the shutter button.
   Future<Uint8List?> screenshot() => _player.screenshot();

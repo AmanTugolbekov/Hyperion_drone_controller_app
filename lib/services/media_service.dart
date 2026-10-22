@@ -20,6 +20,14 @@ class MediaService extends ChangeNotifier {
   DateTime? _recordingStarted;
   Timer? _recordTicker;
 
+  /// Pulls a frame when the drone's video does not arrive as decoded JPEG on
+  /// the protocol — over RTSP the frames live inside the player, so recording
+  /// asks it for them instead.
+  Future<Uint8List?> Function()? _frameSource;
+
+  /// Guards against a slow capture overlapping the next tick.
+  bool _capturing = false;
+
   bool get isRecording => _recorder != null;
 
   Duration get recordingLength => _recordingStarted == null
@@ -46,16 +54,38 @@ class MediaService extends ChangeNotifier {
     return file;
   }
 
-  void startRecording() {
+  /// Starts a clip. [width] and [height] size the container; [frameSource]
+  /// overrides where frames come from, which RTSP needs because nothing
+  /// reaches the protocol layer.
+  void startRecording({
+    int width = 640,
+    int height = 480,
+    int fps = 10,
+    Future<Uint8List?> Function()? frameSource,
+  }) {
     if (isRecording) return;
-    _recorder = MjpegAviWriter(width: 640, height: 480);
+    _recorder = MjpegAviWriter(width: width, height: height, fps: fps);
+    _frameSource = frameSource;
     _recordingStarted = DateTime.now();
 
     // Sampling on a timer rather than on every frame keeps the clip at a
     // steady rate even when the drone's feed stutters.
-    _recordTicker = Timer.periodic(const Duration(milliseconds: 50), (_) {
-      final frame = _drone.lastFrame;
-      if (frame != null) _recorder?.addFrame(frame);
+    final period = Duration(milliseconds: (1000 / fps).round());
+    _recordTicker = Timer.periodic(period, (_) async {
+      final source = _frameSource;
+      if (source == null) {
+        final frame = _drone.lastFrame;
+        if (frame != null) _recorder?.addFrame(frame);
+      } else {
+        if (_capturing) return;
+        _capturing = true;
+        try {
+          final frame = await source();
+          if (frame != null && frame.isNotEmpty) _recorder?.addFrame(frame);
+        } finally {
+          _capturing = false;
+        }
+      }
       notifyListeners();
     });
     notifyListeners();
@@ -67,6 +97,7 @@ class MediaService extends ChangeNotifier {
     _recordTicker?.cancel();
     _recordTicker = null;
     _recorder = null;
+    _frameSource = null;
     _recordingStarted = null;
     notifyListeners();
 
